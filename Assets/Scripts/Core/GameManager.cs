@@ -14,6 +14,7 @@ namespace Chess.Game {
 		public enum PlayerType { Human, AI }
 
 		public bool loadCustomPosition;
+		public bool Chess960GM;
 		public string customPosition = "1rbq1r1k/2pp2pp/p1n3p1/2b1p3/R3P3/1BP2N2/1P3PPP/1NBQ1RK1 w - - 0 1";
 
 		public PlayerType whitePlayerType;
@@ -104,6 +105,10 @@ namespace Chess.Game {
 			if (loadCustomPosition) {
 				board.LoadPosition(customPosition);
 				searchBoard.LoadPosition(customPosition);
+			} else if (Chess960GM) {
+				customPosition = GenerateChess960Fen();
+				board.LoadPosition(customPosition);
+				searchBoard.LoadPosition(customPosition);
 			} else {
 				board.LoadStartPosition();
 				searchBoard.LoadStartPosition();
@@ -120,13 +125,6 @@ namespace Chess.Game {
 
 			NotifyPlayerToMove();
 
-		}
-
-		public void Chess960() {
-			loadCustomPosition = true;
-			//generate chess960 fen string
-			customPosition = GenerateChess960Fen();
-			NewGame(true);
 		}
 
 		public string GenerateChess960Fen() {
@@ -202,6 +200,18 @@ namespace Chess.Game {
 			}
 			finalFen += " w KQkq - 0 1";
 			return finalFen;
+		}
+
+		public void chooseGamemode(int gamemode) {
+			switch (gamemode) {
+				default:
+				case 0:
+					Chess960GM = false;
+					break;
+				case 1:
+					Chess960GM = true;
+					break;
+			}
 		}
 
 		private int findrandomRemainingposition(char[] array, int reamianingPositions) {
