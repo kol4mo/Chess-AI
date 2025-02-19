@@ -39,7 +39,7 @@ namespace Chess.Game {
 		public Board board { get; private set; }
 		Board searchBoard; // Duplicate version of board used for ai search
 
-		void Start () {
+		void Start() {
 			//Application.targetFrameRate = 60;
 
 			if (useClocks) {
@@ -47,23 +47,23 @@ namespace Chess.Game {
 				blackClock.isTurnToMove = false;
 			}
 
-			boardUI = FindObjectOfType<BoardUI> ();
-			gameMoves = new List<Move> ();
-			board = new Board ();
-			searchBoard = new Board ();
-			aiSettings.diagnostics = new Search.SearchDiagnostics ();
+			boardUI = FindObjectOfType<BoardUI>();
+			gameMoves = new List<Move>();
+			board = new Board();
+			searchBoard = new Board();
+			aiSettings.diagnostics = new Search.SearchDiagnostics();
 
-			NewGame (whitePlayerType, blackPlayerType);
+			NewGame(whitePlayerType, blackPlayerType);
 
 		}
 
-		void Update () {
+		void Update() {
 			zobristDebug = board.ZobristKey;
 
 			if (gameResult == Result.Playing) {
-				LogAIDiagnostics ();
+				LogAIDiagnostics();
 
-				playerToMove.Update ();
+				playerToMove.Update();
 
 				if (useClocks) {
 					whiteClock.isTurnToMove = board.WhiteToMove;
@@ -71,55 +71,150 @@ namespace Chess.Game {
 				}
 			}
 
-			if (Input.GetKeyDown (KeyCode.E)) {
-				ExportGame ();
+			if (Input.GetKeyDown(KeyCode.E)) {
+				ExportGame();
 			}
 
 		}
 
-		void OnMoveChosen (Move move) {
+		void OnMoveChosen(Move move) {
 			bool animateMove = playerToMove is AIPlayer;
-			board.MakeMove (move);
-			searchBoard.MakeMove (move);
+			board.MakeMove(move);
+			searchBoard.MakeMove(move);
 
-			gameMoves.Add (move);
-			onMoveMade?.Invoke (move);
-			boardUI.OnMoveMade (board, move, animateMove);
+			gameMoves.Add(move);
+			onMoveMade?.Invoke(move);
+			boardUI.OnMoveMade(board, move, animateMove);
 
-			NotifyPlayerToMove ();
+			NotifyPlayerToMove();
 		}
 
-		public void NewGame (bool humanPlaysWhite) {
-			boardUI.SetPerspective (humanPlaysWhite);
-			NewGame ((humanPlaysWhite) ? PlayerType.Human : PlayerType.AI, (humanPlaysWhite) ? PlayerType.AI : PlayerType.Human);
+		public void NewGame(bool humanPlaysWhite) {
+			boardUI.SetPerspective(humanPlaysWhite);
+			NewGame((humanPlaysWhite) ? PlayerType.Human : PlayerType.AI, (humanPlaysWhite) ? PlayerType.AI : PlayerType.Human);
 		}
 
-		public void NewComputerVersusComputerGame () {
-			boardUI.SetPerspective (true);
-			NewGame (PlayerType.AI, PlayerType.AI);
+		public void NewComputerVersusComputerGame() {
+			boardUI.SetPerspective(true);
+			NewGame(PlayerType.AI, PlayerType.AI);
 		}
 
-		void NewGame (PlayerType whitePlayerType, PlayerType blackPlayerType) {
-			gameMoves.Clear ();
+		void NewGame(PlayerType whitePlayerType, PlayerType blackPlayerType) {
+			gameMoves.Clear();
 			if (loadCustomPosition) {
-				board.LoadPosition (customPosition);
-				searchBoard.LoadPosition (customPosition);
+				board.LoadPosition(customPosition);
+				searchBoard.LoadPosition(customPosition);
 			} else {
-				board.LoadStartPosition ();
-				searchBoard.LoadStartPosition ();
+				board.LoadStartPosition();
+				searchBoard.LoadStartPosition();
 			}
-			onPositionLoaded?.Invoke ();
-			boardUI.UpdatePosition (board);
-			boardUI.ResetSquareColours ();
+			onPositionLoaded?.Invoke();
+			boardUI.UpdatePosition(board);
+			boardUI.ResetSquareColours();
 
-			CreatePlayer (ref whitePlayer, whitePlayerType);
-			CreatePlayer (ref blackPlayer, blackPlayerType);
+			CreatePlayer(ref whitePlayer, whitePlayerType);
+			CreatePlayer(ref blackPlayer, blackPlayerType);
 
 			gameResult = Result.Playing;
-			PrintGameResult (gameResult);
+			PrintGameResult(gameResult);
 
-			NotifyPlayerToMove ();
+			NotifyPlayerToMove();
 
+		}
+
+		public void Chess960() {
+			loadCustomPosition = true;
+			//generate chess960 fen string
+			customPosition = GenerateChess960Fen();
+			NewGame(true);
+		}
+
+		public string GenerateChess960Fen() {
+			string finalFen = "";
+			char[] blackPosition = new char[8];
+			char[] whitePosition = new char[8];
+			//dark bishop position
+			int WdbPosition = Random.Range(0, 4) * 2; // exclusivly even numbers starting with 0,2,4,6
+			int BdbPosition = Random.Range(0, 4) * 2; // exclusivly even numbers starting with 0,2,4,6
+			whitePosition[WdbPosition] = 'B';
+			blackPosition[BdbPosition] = 'b';
+			//light bishop position
+			int WlbPosition = Random.Range(0, 4) * 2 + 1; // exclusivly even numbers starting with 1,3,5,7
+			int BlbPosition = Random.Range(0, 4) * 2 + 1; // exclusivly even numbers starting with 1,3,5,7
+			whitePosition[WlbPosition] = 'B';
+			blackPosition[BlbPosition] = 'b';
+			//random queen position
+			int WqPostion = findrandomRemainingposition(whitePosition, 6);
+			int BqPostion = findrandomRemainingposition(blackPosition, 6);
+			whitePosition[WqPostion] = 'Q';
+			blackPosition[BqPostion] = 'q';
+			//two knight positions			
+			int Wk1Postion = findrandomRemainingposition(whitePosition, 5);
+			int Wk2Postion = findrandomRemainingposition(whitePosition, 4);
+			int Bk1Postion = findrandomRemainingposition(blackPosition, 5);
+			int Bk2Postion = findrandomRemainingposition(blackPosition, 4);
+			whitePosition[Wk1Postion] = 'N';
+			whitePosition[Wk2Postion] = 'N';
+			blackPosition[Bk1Postion] = 'n';
+			blackPosition[Bk2Postion] = 'n';
+			//rook, King, rook position
+			int j = 0;
+			for (int i = 0; i < whitePosition.Length; i++) {
+				if (whitePosition[i] == '\0') {
+					switch (j) {
+						case 0:
+							whitePosition[i] = 'R';
+							break;
+						case 1:
+							whitePosition[i] = 'K';
+							break;
+						case 2:
+							whitePosition[i] = 'R';
+							break;
+					}
+					j++;
+				}
+			}
+			j = 0;
+			for (int i = 0; i < blackPosition.Length; i++) {
+				if (blackPosition[i] == '\0') {
+					switch (j) {
+						case 0:
+							blackPosition[i] = 'r';
+							break;
+						case 1:
+							blackPosition[i] = 'k';
+							break;
+						case 2:
+							blackPosition[i] = 'r';
+							break;
+					}
+					j++;
+				}
+			}
+			//build the fen string
+			foreach (char c in blackPosition) {
+				finalFen += c;
+			}
+			finalFen += "/pppppppp/8/8/8/8/PPPPPPPP/"; 
+			foreach (char c in whitePosition) {
+				finalFen += c;
+			}
+			finalFen += " w KQkq - 0 1";
+			return finalFen;
+		}
+
+		private int findrandomRemainingposition(char[] array, int reamianingPositions) {
+			int rPosition = Random.Range(0, reamianingPositions) + 1;
+			for (int i = 0; i < array.Length; i++) {
+				if (array[i] == '\0') {
+					rPosition--;
+				}
+				if (rPosition == 0) {
+					return i;
+				}
+			}
+			return -1;
 		}
 
 		void LogAIDiagnostics () {
